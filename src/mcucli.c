@@ -6,7 +6,7 @@
 static char mcucli_buffer[CONFIG_MAX_BUFFER_SIZE];
 static char *mcucli_arguments[CONFIG_MAX_ARGUMENTS];
 
-static ssize_t mcucli_default_write_byte(char byte) {
+static int mcucli_default_write_byte(char byte) {
   UNUSED(byte);
   return 1;
 }

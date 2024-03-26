@@ -8,6 +8,7 @@ LIB_NAME := mcucli
 
 # Compiler and flags
 CC := gcc
+AR := ar
 CFLAGS := -Wall -Wextra -I$(INCLUDE_DIR)
 LD_FLAGS := -L$(BUILD_DIR) -l$(LIB_NAME)
 
@@ -23,7 +24,7 @@ TEST_EXECS := $(patsubst $(TESTS_DIR)/%.c,$(BUILD_DIR)/%,$(TEST_FILES))
 all: lib test
 
 lib: $(OBJ_FILES)
-	ar rcs $(BUILD_DIR)/lib$(LIB_NAME).a $^
+	$(AR) rcs $(BUILD_DIR)/lib$(LIB_NAME).a $^
 
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
 	@mkdir -p $(BUILD_DIR)

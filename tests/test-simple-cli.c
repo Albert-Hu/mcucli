@@ -59,7 +59,7 @@ static void mcucli_help(void *user_data, int argc, char *argv[]) {
   }
 }
 
-static ssize_t stdio_write(char byte) { return write(STDOUT_FILENO, &byte, 1); }
+static int stdio_write(char byte) { return write(STDOUT_FILENO, &byte, 1); }
 
 int main() {
   char c;

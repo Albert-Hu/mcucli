@@ -20,7 +20,7 @@
 #define MCUCLI_STATE_DELETE 3
 #define MCUCLI_STATE_ENTER 4
 
-typedef ssize_t (*byte_writer_t)(char byte);
+typedef int (*byte_writer_t)(char byte);
 typedef void (*command_handler_t)(void *user_data, int argc, char *argv[]);
 typedef void (*unknown_command_handler_t)(void *user_data, const char *command);
 typedef struct _mcucli_command {
