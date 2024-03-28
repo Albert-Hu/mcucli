@@ -126,10 +126,11 @@ uint8_t mcucli_push_char(mcucli_t *cli, char c) {
     if (c == 0x1B) { // ESC
       cli->state = MCUCLI_STATE_ESC;
     } else {
-      if (c == 0x7F) { // backspace
+      if (c == 0x7F || c == 0x08) { // backspace
         mcucli_remove_character(cli, 1);
       } else if (c == '\n' || c == '\r') {
         cli->line[cli->len] = '\0';
+        cli->writer('\r');
         cli->writer('\n');
         if (cli->len > 0) {
           result = mcucli_command_execute(cli->commands, cli->num_commands,
