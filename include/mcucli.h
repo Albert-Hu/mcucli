@@ -31,6 +31,7 @@ typedef struct _mcucli_command {
 
 typedef struct _mcucli {
   uint8_t state;
+  uint8_t prev_char;
   size_t len;
   size_t cursor;
   size_t num_commands;

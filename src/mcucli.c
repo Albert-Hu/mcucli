@@ -47,7 +47,7 @@ static int mcucli_remove_character(mcucli_t *cli, uint8_t is_backspace) {
 }
 
 static int mcucli_insert_character(mcucli_t *cli, char c) {
-  if (cli->len < CONFIG_MAX_BUFFER_SIZE - 1) {
+  if (cli->len < CONFIG_MAX_BUFFER_SIZE - 1 && c != '\t') {
     for (size_t i = cli->len; i > cli->cursor; i--) {
       cli->line[i] = cli->line[i - 1];
     }
@@ -128,7 +128,7 @@ uint8_t mcucli_push_char(mcucli_t *cli, char c) {
     } else {
       if (c == 0x7F || c == 0x08) { // backspace
         mcucli_remove_character(cli, 1);
-      } else if (c == '\n' || c == '\r') {
+      } else if ((c == '\n' && cli->prev_char != '\r') || c == '\r') {
         cli->line[cli->len] = '\0';
         cli->writer('\r');
         cli->writer('\n');
@@ -196,5 +196,8 @@ uint8_t mcucli_push_char(mcucli_t *cli, char c) {
     cli->state = MCUCLI_STATE_NORMAL;
     break;
   }
+
+  cli->prev_char = c;
+
   return cli->state;
 }
