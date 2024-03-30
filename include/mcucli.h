@@ -20,14 +20,16 @@
 #define MCUCLI_STATE_DELETE 3
 #define MCUCLI_STATE_ENTER 4
 
+typedef struct _mcucli_command mcucli_command_t;
 typedef int (*byte_writer_t)(char byte);
-typedef void (*command_handler_t)(void *user_data, int argc, char *argv[]);
+typedef void (*command_handler_t)(mcucli_command_t *command, void *user_data, int argc, char *argv[]);
 typedef void (*unknown_command_handler_t)(void *user_data, const char *command);
-typedef struct _mcucli_command {
-  const char *name;
-  const char *help;
+
+struct _mcucli_command {
+  char *name;
+  char *help;
   command_handler_t handler;
-} mcucli_command_t;
+};
 
 typedef struct _mcucli {
   uint8_t state;

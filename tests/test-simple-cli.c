@@ -6,10 +6,10 @@
 
 #include "mcucli.h"
 
-static void mcucli_exit(void *user_data, int argc, char *argv[]);
-static void mcucli_echo(void *user_data, int argc, char *argv[]);
-static void mcucli_version(void *user_data, int argc, char *argv[]);
-static void mcucli_help(void *user_data, int argc, char *argv[]);
+static void mcucli_exit(mcucli_command_t *command, void *user_data, int argc, char *argv[]);
+static void mcucli_echo(mcucli_command_t *command, void *user_data, int argc, char *argv[]);
+static void mcucli_version(mcucli_command_t *command, void *user_data, int argc, char *argv[]);
+static void mcucli_help(mcucli_command_t *command, void *user_data, int argc, char *argv[]);
 
 static mcucli_command_t commands[] = {
     {"exit", "Exit the program.", mcucli_exit},
@@ -24,16 +24,18 @@ static void mcucli_unknown_command(void *user_data, const char *command) {
   printf("Unknown command: %s\r\n", command);
 }
 
-static void mcucli_exit(void *user_data, int argc, char *argv[]) {
+static void mcucli_exit(mcucli_command_t *command, void *user_data, int argc, char *argv[]) {
   int *stop = (int *)user_data;
 
+  UNUSED(command);
   UNUSED(argc);
   UNUSED(argv);
 
   *stop = 1;
 }
 
-static void mcucli_echo(void *user_data, int argc, char *argv[]) {
+static void mcucli_echo(mcucli_command_t *command, void *user_data, int argc, char *argv[]) {
+  UNUSED(command);
   UNUSED(user_data);
   for (int i = 0; i < argc; i++) {
     printf("%s\r\n", argv[i]);
@@ -41,7 +43,8 @@ static void mcucli_echo(void *user_data, int argc, char *argv[]) {
   printf("\r\n");
 }
 
-static void mcucli_version(void *user_data, int argc, char *argv[]) {
+static void mcucli_version(mcucli_command_t *command, void *user_data, int argc, char *argv[]) {
+  UNUSED(command);
   UNUSED(user_data);
   UNUSED(argc);
   UNUSED(argv);
@@ -49,7 +52,8 @@ static void mcucli_version(void *user_data, int argc, char *argv[]) {
   printf("1.0.0\r\n");
 }
 
-static void mcucli_help(void *user_data, int argc, char *argv[]) {
+static void mcucli_help(mcucli_command_t *command, void *user_data, int argc, char *argv[]) {
+  UNUSED(command);
   UNUSED(user_data);
   UNUSED(argc);
   UNUSED(argv);
