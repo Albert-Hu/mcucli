@@ -95,7 +95,7 @@ uint8_t mcucli_command_execute(mcucli_command_t *commands, size_t num_commands,
   // execute command
   for (size_t i = 0; i < num_commands; i++) {
     if (strcmp(command, commands[i].name) == 0) {
-      commands[i].handler(commands, user_data, argc, mcucli_arguments);
+      commands[i].handler(&commands[i], user_data, argc, mcucli_arguments);
       return MCUCLI_COMMAND_OK;
     }
   }
