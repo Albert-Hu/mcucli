@@ -4,10 +4,10 @@
 
 static void mcucli_execute(mcucli_t *cli);
 static void mcucli_reset(mcucli_t *cli);
-static void mcucli_input_normal(mcucli_t *cli, char c);
-static void mcucli_input_esc(mcucli_t *cli, char c);
-static void mcucli_input_esc_bracket(mcucli_t *cli, char c);
-static void mcucli_input_delete(mcucli_t *cli, char c);
+static void mcucli_input_normal(mcucli_t *cli, void *user_data, char c);
+static void mcucli_input_esc(mcucli_t *cli, void *user_data, char c);
+static void mcucli_input_esc_bracket(mcucli_t *cli, void *user_data, char c);
+static void mcucli_input_delete(mcucli_t *cli, void *user_data, char c);
 static void mcucli_insert_character(mcucli_t *cli, char c);
 static void mcucli_remove_character(mcucli_t *cli, uint8_t is_backspace);
 
@@ -68,16 +68,18 @@ static void mcucli_insert_character(mcucli_t *cli, char c) {
   }
 }
 
-static void mcucli_input_delete(mcucli_t *cli, char c) {
+static void mcucli_input_delete(mcucli_t *cli, void *user_data, char c) {
   if (c == '~') {
     mcucli_remove_character(cli, 0);
   } else {
     cli->process = mcucli_input_normal;
-    mcucli_input_normal(cli, c);
+    mcucli_input_normal(cli, user_data, c);
   }
 }
 
-static void mcucli_input_esc_bracket(mcucli_t *cli, char c) {
+static void mcucli_input_esc_bracket(mcucli_t *cli, void *user_data, char c) {
+  UNUSED(user_data);
+
   switch (c) {
     case 'A': // up
       break;
@@ -112,36 +114,46 @@ static void mcucli_input_esc_bracket(mcucli_t *cli, char c) {
       break;
     default:
       cli->process = mcucli_input_normal;
-      mcucli_input_normal(cli, c);
+      mcucli_input_normal(cli, user_data, c);
       break;
   }
 }
 
-static void mcucli_input_esc(mcucli_t *cli, char c) {
+static void mcucli_input_esc(mcucli_t *cli, void *user_data, char c) {
+  UNUSED(user_data);
+
   if (c == '[') {
     cli->process = mcucli_input_esc_bracket;
   } else {
     cli->process = mcucli_input_normal;
-    mcucli_input_normal(cli, c);
+    mcucli_input_normal(cli, user_data, c);
   }
 }
 
-static void mcucli_input_normal(mcucli_t *cli, char c) {
+static void mcucli_input_normal(mcucli_t *cli, void *user_data, char c) {
+  UNUSED(user_data);
+
   if (c == 0x1B) { // ESC
     cli->process = mcucli_input_esc;
   } else if (c == 0x7F || c == 0x08) { // backspace
     mcucli_remove_character(cli, 1);
   } else if (c == '\n' || c == '\r') {
     if (cli->len > 0) {
-      cli->buffer.line[cli->len] = '\0';
       cli->write("\r\n", 2);
+      cli->buffer.line[cli->len] = '\0';
       mcucli_execute(cli);
       mcucli_reset(cli);
     }
+
+    cli->buffer.line[0] = c;
+    if (cli->buffer.line[0] != '\r') {
+      cli->write(cli->prefix, strlen(cli->prefix));
+    }
   } else if (c == 0x03) {
     // handle ctrl-c event
-    cli->write("\r\n", 2);
     mcucli_reset(cli);
+    cli->write("^C\r\n", 2);
+    cli->write(cli->prefix, strlen(cli->prefix));
   } else {
     mcucli_insert_character(cli, c);
   }
@@ -179,7 +191,23 @@ static void mcucli_execute(mcucli_t *cli) {
 }
 
 void mcucli_putc(mcucli_t *cli, char c) {
-  return cli->process(cli, c);
+  cli->process(cli, cli->user_data, c);
+}
+
+void mcucli_set_prefix(mcucli_t *cli, char *prefix) {
+  cli->prefix = prefix;
+  cli->write(prefix, strlen(prefix));
+}
+
+void mcucli_set_stream_handler(mcucli_t *cli, input_handler_t handler) {
+  cli->process = handler;
+}
+
+void mcucli_unset_stream_handler(mcucli_t *cli) {
+  cli->process = mcucli_input_normal;
+  cli->write("\r\n", 2);
+  cli->write(cli->prefix, strlen(cli->prefix));
+  mcucli_reset(cli);
 }
 
 void mcucli_init(mcucli_t *cli, void *user_data, mcucli_buffer_t *b, mcucli_command_set_t *s, bytes_write_t w, unknown_command_handler_t u) {
@@ -195,4 +223,5 @@ void mcucli_init(mcucli_t *cli, void *user_data, mcucli_buffer_t *b, mcucli_comm
   cli->write = (w == NULL ? mcucli_bytes_write : w);
   cli->unknown_command_handler = (u == NULL ? mcucli_unknown_command_handler : u);
   cli->user_data = user_data;
+  cli->prefix = "";
 }

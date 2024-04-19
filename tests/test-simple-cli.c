@@ -10,12 +10,14 @@
 #define ARGUMENT_BUFFER_SIZE 32
 
 static void mcucli_exit(mcucli_t *cli, void *user_data, int argc, char *argv[]);
+static void mcucli_stream(mcucli_t *cli, void *user_data, int argc, char *argv[]);
 static void mcucli_echo(mcucli_t *cli, void *user_data, int argc, char *argv[]);
 static void mcucli_version(mcucli_t *cli, void *user_data, int argc, char *argv[]);
 static void mcucli_help(mcucli_t *cli, void *user_data, int argc, char *argv[]);
 
 static mcucli_command_t commands[] = {
     {"exit", "Exit the program.", mcucli_exit},
+    {"stream", "Stream the user input.", mcucli_stream},
     {"echo", "Echo the user input.", mcucli_echo},
     {"version", "Show the version.", mcucli_version},
     {"help", "Show the usage.", mcucli_help}};
@@ -26,6 +28,17 @@ static mcucli_command_set_t command_set = {num_commands, commands};
 static char line_buffer[LINE_BUFFER_SIZE];
 static char *argument_buffer[ARGUMENT_BUFFER_SIZE];
 static mcucli_buffer_t buffer = {line_buffer, LINE_BUFFER_SIZE, argument_buffer, ARGUMENT_BUFFER_SIZE};
+
+static void mcucli_input_stream(mcucli_t *cli, void *user_data, char c) {
+  UNUSED(user_data);
+
+  if (c == '\r' || c == '\n') {
+    printf("\r\n");
+    mcucli_unset_stream_handler(cli);
+  } else {
+    printf("Received: %c\r\n", c);
+  }
+}
 
 static void mcucli_unknown_command(mcucli_t *cli, void *user_data, const char *command) {
   UNUSED(cli);
@@ -43,6 +56,13 @@ static void mcucli_exit(mcucli_t *cli, void *user_data, int argc, char *argv[]) 
   UNUSED(argv);
 
   *stop = 1;
+}
+
+static void mcucli_stream(mcucli_t *cli, void *user_data, int argc, char *argv[]) {
+  UNUSED(user_data);
+  UNUSED(argc);
+  UNUSED(argv);
+  mcucli_set_stream_handler(cli, mcucli_input_stream);
 }
 
 static void mcucli_echo(mcucli_t *cli, void *user_data, int argc, char *argv[]) {
@@ -93,10 +113,12 @@ int main(int argc, char *argv[]) {
   tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
 
   mcucli_init(&cli, &stop, &buffer, &command_set, stdio_write, mcucli_unknown_command);
+  mcucli_set_prefix(&cli, "> ");
 
   while (read(STDIN_FILENO, &c, 1) == 1) {
     mcucli_putc(&cli, c);
     if (stop) {
+      printf("\r\n");
       break;
     }
   }

@@ -16,7 +16,7 @@ typedef int (*byte_writer_t)(char byte);
 
 typedef void (*unknown_command_handler_t)(mcucli_t *cli, void *user_data, const char *command);
 typedef void (*command_handler_t)(mcucli_t *cli, void *user_data, int argc, char *argv[]);
-typedef void (*input_handler_t)(mcucli_t *cli, char c);
+typedef void (*input_handler_t)(mcucli_t *cli, void *user_data, char c);
 typedef int (*bytes_write_t)(const char *bytes, size_t len);
 
 struct _mcucli_buffer {
@@ -45,11 +45,14 @@ struct _mcucli {
   input_handler_t process;
   bytes_write_t write;
   unknown_command_handler_t unknown_command_handler;
+  char *prefix;
   void *user_data;
 };
 
 void mcucli_init(mcucli_t *cli, void *user_data, mcucli_buffer_t *b, mcucli_command_set_t *s, bytes_write_t w, unknown_command_handler_t u);
-
+void mcucli_set_prefix(mcucli_t *cli, char *prefix);
+void mcucli_set_stream_handler(mcucli_t *cli, input_handler_t handler);
+void mcucli_unset_stream_handler(mcucli_t *cli);
 void mcucli_putc(mcucli_t *cli, char c);
 
 #endif // _MCUCLI_H_
