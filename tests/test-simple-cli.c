@@ -6,10 +6,13 @@
 
 #include "mcucli.h"
 
-static void mcucli_exit(mcucli_command_t *command, void *user_data, int argc, char *argv[]);
-static void mcucli_echo(mcucli_command_t *command, void *user_data, int argc, char *argv[]);
-static void mcucli_version(mcucli_command_t *command, void *user_data, int argc, char *argv[]);
-static void mcucli_help(mcucli_command_t *command, void *user_data, int argc, char *argv[]);
+#define LINE_BUFFER_SIZE 128
+#define ARGUMENT_BUFFER_SIZE 32
+
+static void mcucli_exit(mcucli_t *cli, void *user_data, int argc, char *argv[]);
+static void mcucli_echo(mcucli_t *cli, void *user_data, int argc, char *argv[]);
+static void mcucli_version(mcucli_t *cli, void *user_data, int argc, char *argv[]);
+static void mcucli_help(mcucli_t *cli, void *user_data, int argc, char *argv[]);
 
 static mcucli_command_t commands[] = {
     {"exit", "Exit the program.", mcucli_exit},
@@ -18,24 +21,32 @@ static mcucli_command_t commands[] = {
     {"help", "Show the usage.", mcucli_help}};
 static const size_t num_commands = sizeof(commands) / sizeof(commands[0]);
 
-static void mcucli_unknown_command(void *user_data, const char *command) {
+static mcucli_command_set_t command_set = {num_commands, commands};
+
+static char line_buffer[LINE_BUFFER_SIZE];
+static char *argument_buffer[ARGUMENT_BUFFER_SIZE];
+static mcucli_buffer_t buffer = {line_buffer, LINE_BUFFER_SIZE, argument_buffer, ARGUMENT_BUFFER_SIZE};
+
+static void mcucli_unknown_command(mcucli_t *cli, void *user_data, const char *command) {
+  UNUSED(cli);
   UNUSED(user_data);
 
   printf("Unknown command: %s\r\n", command);
 }
 
-static void mcucli_exit(mcucli_command_t *command, void *user_data, int argc, char *argv[]) {
+static void mcucli_exit(mcucli_t *cli, void *user_data, int argc, char *argv[]) {
   int *stop = (int *)user_data;
 
-  UNUSED(command);
+  UNUSED(cli);
+  UNUSED(user_data);
   UNUSED(argc);
   UNUSED(argv);
 
   *stop = 1;
 }
 
-static void mcucli_echo(mcucli_command_t *command, void *user_data, int argc, char *argv[]) {
-  UNUSED(command);
+static void mcucli_echo(mcucli_t *cli, void *user_data, int argc, char *argv[]) {
+  UNUSED(cli);
   UNUSED(user_data);
   for (int i = 0; i < argc; i++) {
     printf("%s\r\n", argv[i]);
@@ -43,8 +54,8 @@ static void mcucli_echo(mcucli_command_t *command, void *user_data, int argc, ch
   printf("\r\n");
 }
 
-static void mcucli_version(mcucli_command_t *command, void *user_data, int argc, char *argv[]) {
-  UNUSED(command);
+static void mcucli_version(mcucli_t *cli, void *user_data, int argc, char *argv[]) {
+  UNUSED(cli);
   UNUSED(user_data);
   UNUSED(argc);
   UNUSED(argv);
@@ -52,8 +63,8 @@ static void mcucli_version(mcucli_command_t *command, void *user_data, int argc,
   printf("1.0.0\r\n");
 }
 
-static void mcucli_help(mcucli_command_t *command, void *user_data, int argc, char *argv[]) {
-  UNUSED(command);
+static void mcucli_help(mcucli_t *cli, void *user_data, int argc, char *argv[]) {
+  UNUSED(cli);
   UNUSED(user_data);
   UNUSED(argc);
   UNUSED(argv);
@@ -63,14 +74,17 @@ static void mcucli_help(mcucli_command_t *command, void *user_data, int argc, ch
   }
 }
 
-static int stdio_write(char byte) { return write(STDOUT_FILENO, &byte, 1); }
+static int stdio_write(const char *bytes, size_t size) { return write(STDOUT_FILENO, bytes, size); }
 
-int main() {
+int main(int argc, char *argv[]) {
   char c;
   int stop;
   mcucli_t cli;
   struct termios orig;
   struct termios raw;
+
+  UNUSED(argc);
+  UNUSED(argv);
 
   tcgetattr(STDIN_FILENO, &orig);
 
@@ -78,11 +92,10 @@ int main() {
   raw.c_lflag &= ~(ECHO | ICANON);
   tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
 
-  mcucli_init(&cli, commands, num_commands, stdio_write, mcucli_unknown_command,
-              &stop);
+  mcucli_init(&cli, &stop, &buffer, &command_set, stdio_write, mcucli_unknown_command);
 
   while (read(STDIN_FILENO, &c, 1) == 1) {
-    mcucli_push_char(&cli, c);
+    mcucli_putc(&cli, c);
     if (stop) {
       break;
     }
