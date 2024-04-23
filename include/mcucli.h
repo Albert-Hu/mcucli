@@ -12,8 +12,6 @@ typedef struct _mcucli_buffer mcucli_buffer_t;
 typedef struct _mcucli_command mcucli_command_t;
 typedef struct _mcucli_command_set mcucli_command_set_t;
 
-typedef int (*byte_writer_t)(char byte);
-
 typedef void (*unknown_command_handler_t)(mcucli_t *cli, void *user_data, const char *command);
 typedef void (*command_handler_t)(mcucli_t *cli, void *user_data, int argc, char *argv[]);
 typedef void (*input_handler_t)(mcucli_t *cli, void *user_data, char c);
