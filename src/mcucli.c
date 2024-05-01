@@ -6,7 +6,10 @@ static void mcucli_execute(mcucli_t *cli);
 static void mcucli_reset(mcucli_t *cli);
 static void mcucli_input_normal(mcucli_t *cli, void *user_data, char c);
 static void mcucli_input_esc(mcucli_t *cli, void *user_data, char c);
-static void mcucli_input_esc_bracket(mcucli_t *cli, void *user_data, char c);
+static void mcucli_input_esc_seq1(mcucli_t *cli, void *user_data, char c);
+static void mcucli_input_esc_seq2(mcucli_t *cli, void *user_data, char c);
+static void mcucli_input_esc_seq3(mcucli_t *cli, void *user_data, char c);
+static void mcucli_input_esc_seq4(mcucli_t *cli, void *user_data, char c);
 static void mcucli_input_delete(mcucli_t *cli, void *user_data, char c);
 static void mcucli_insert_character(mcucli_t *cli, char c);
 static void mcucli_remove_character(mcucli_t *cli, uint8_t is_backspace);
@@ -17,7 +20,7 @@ static int mcucli_bytes_write(const char *bytes, size_t len) {
 }
 
 static void mcucli_unknown_command_handler(mcucli_t *cli, void *user_data,
-                                                   const char *command) {
+                                           const char *command) {
   UNUSED(cli);
   UNUSED(user_data);
   UNUSED(command);
@@ -69,53 +72,80 @@ static void mcucli_insert_character(mcucli_t *cli, char c) {
 }
 
 static void mcucli_input_delete(mcucli_t *cli, void *user_data, char c) {
-  if (c == '~') {
-    mcucli_remove_character(cli, 0);
-  } else {
-    cli->process = mcucli_input_normal;
-    mcucli_input_normal(cli, user_data, c);
-  }
-}
-
-static void mcucli_input_esc_bracket(mcucli_t *cli, void *user_data, char c) {
   UNUSED(user_data);
 
+  if (c == '~') {
+    mcucli_remove_character(cli, 0);
+  }
+  cli->process = mcucli_input_normal;
+}
+
+static void mcucli_input_esc_seq4(mcucli_t *cli, void *user_data, char c) {
+  UNUSED(user_data);
+  UNUSED(c);
+
+  cli->process = mcucli_input_normal;
+}
+
+static void mcucli_input_esc_seq3(mcucli_t *cli, void *user_data, char c) {
+  UNUSED(user_data);
+
+  cli->process =
+      (c == '0' || c == '1') ? mcucli_input_esc_seq4 : mcucli_input_normal;
+}
+
+static void mcucli_input_esc_seq2(mcucli_t *cli, void *user_data, char c) {
+  UNUSED(user_data);
+
+  cli->process = (c == '0' && cli->prev_char == '2') ? mcucli_input_esc_seq3
+                                                     : mcucli_input_normal;
+}
+
+static void mcucli_input_esc_seq1(mcucli_t *cli, void *user_data, char c) {
+  UNUSED(user_data);
+
+  cli->process = mcucli_input_normal;
+
   switch (c) {
-    case 'A': // up
-      break;
-    case 'B': // down
-      break;
-    case 'C': // right
-      if (cli->cursor < cli->len) {
-        cli->cursor++;
-        cli->write("\033[C", 3);
-      }
-      break;
-    case 'D': // left
-      if (cli->cursor > 0) {
-        cli->cursor--;
-        cli->write("\033[D", 3);
-      }
-      break;
-    case 'F': // end
-      while (cli->cursor < cli->len) {
-        cli->cursor++;
-        cli->write("\033[C", 3);
-      }
-      break;
-    case 'H': // home
-      while (cli->cursor > 0) {
-        cli->cursor--;
-        cli->write("\033[D", 3);
-      }
-      break;
-    case '3': // delete
-      cli->process = mcucli_input_delete;
-      break;
-    default:
-      cli->process = mcucli_input_normal;
-      mcucli_input_normal(cli, user_data, c);
-      break;
+  case 'A': // up
+  case 'B': // down
+    break;
+  case 'C': // right
+    if (cli->cursor < cli->len) {
+      cli->cursor++;
+      cli->write("\033[C", 3);
+    }
+    break;
+  case 'D': // left
+    if (cli->cursor > 0) {
+      cli->cursor--;
+      cli->write("\033[D", 3);
+    }
+    break;
+  case 'F': // end
+    while (cli->cursor < cli->len) {
+      cli->cursor++;
+      cli->write("\033[C", 3);
+    }
+    break;
+  case 'H': // home
+    while (cli->cursor > 0) {
+      cli->cursor--;
+      cli->write("\033[D", 3);
+    }
+    break;
+  case '3': // delete
+    cli->process = mcucli_input_delete;
+    break;
+  case '1':
+  case '2':
+  case '4':
+  case '7':
+  case '8':
+    cli->process = mcucli_input_esc_seq2;
+    break;
+  default:
+    break;
   }
 }
 
@@ -123,10 +153,9 @@ static void mcucli_input_esc(mcucli_t *cli, void *user_data, char c) {
   UNUSED(user_data);
 
   if (c == '[') {
-    cli->process = mcucli_input_esc_bracket;
+    cli->process = mcucli_input_esc_seq1;
   } else {
     cli->process = mcucli_input_normal;
-    mcucli_input_normal(cli, user_data, c);
   }
 }
 
@@ -192,6 +221,7 @@ static void mcucli_execute(mcucli_t *cli) {
 
 void mcucli_putc(mcucli_t *cli, char c) {
   cli->process(cli, cli->user_data, c);
+  cli->prev_char = c;
 }
 
 void mcucli_set_prefix(mcucli_t *cli, char *prefix) {
@@ -210,7 +240,9 @@ void mcucli_unset_stream_handler(mcucli_t *cli) {
   mcucli_reset(cli);
 }
 
-void mcucli_init(mcucli_t *cli, void *user_data, mcucli_buffer_t *b, mcucli_command_set_t *s, bytes_write_t w, unknown_command_handler_t u) {
+void mcucli_init(mcucli_t *cli, void *user_data, mcucli_buffer_t *b,
+                 mcucli_command_set_t *s, bytes_write_t w,
+                 unknown_command_handler_t u) {
   cli->len = 0;
   cli->cursor = 0;
   cli->buffer.line = b->line;
@@ -221,7 +253,8 @@ void mcucli_init(mcucli_t *cli, void *user_data, mcucli_buffer_t *b, mcucli_comm
   cli->command_set.num_commands = s->num_commands;
   cli->process = mcucli_input_normal;
   cli->write = (w == NULL ? mcucli_bytes_write : w);
-  cli->unknown_command_handler = (u == NULL ? mcucli_unknown_command_handler : u);
+  cli->unknown_command_handler =
+      (u == NULL ? mcucli_unknown_command_handler : u);
   cli->user_data = user_data;
   cli->prefix = "";
 }
