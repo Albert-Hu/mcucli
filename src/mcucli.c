@@ -97,8 +97,16 @@ static void mcucli_input_esc_seq3(mcucli_t *cli, void *user_data, char c) {
 static void mcucli_input_esc_seq2(mcucli_t *cli, void *user_data, char c) {
   UNUSED(user_data);
 
-  cli->process = (c == '0' && cli->prev_char == '2') ? mcucli_input_esc_seq3
-                                                     : mcucli_input_normal;
+  if (c == 'F') {
+    while (cli->cursor < cli->len) {
+      cli->cursor++;
+      cli->write("\033[C", 3);
+    }
+    cli->process = mcucli_input_normal;
+  } else {
+    cli->process = (c == '0' && cli->prev_char == '2') ? mcucli_input_esc_seq3
+                                                       : mcucli_input_normal;
+  }
 }
 
 static void mcucli_input_esc_seq1(mcucli_t *cli, void *user_data, char c) {
@@ -122,6 +130,9 @@ static void mcucli_input_esc_seq1(mcucli_t *cli, void *user_data, char c) {
       cli->write("\033[D", 3);
     }
     break;
+  case 'O':
+    cli->process = mcucli_input_esc_seq2;
+    break;
   case 'F': // end
     while (cli->cursor < cli->len) {
       cli->cursor++;
@@ -134,10 +145,10 @@ static void mcucli_input_esc_seq1(mcucli_t *cli, void *user_data, char c) {
       cli->write("\033[D", 3);
     }
     break;
+  case '1':
   case '3': // delete
     cli->process = mcucli_input_delete;
     break;
-  case '1':
   case '2':
   case '4':
   case '7':
