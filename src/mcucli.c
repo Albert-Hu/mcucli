@@ -178,15 +178,17 @@ static void mcucli_input_normal(mcucli_t *cli, void *user_data, char c) {
   } else if (c == 0x7F || c == 0x08) { // backspace
     mcucli_remove_character(cli, 1);
   } else if (c == '\n' || c == '\r') {
-    if (cli->len > 0) {
+    if (cli->prev_char != '\r') {
       cli->write("\r\n", 2);
+    }
+
+    if (cli->len > 0) {
       cli->buffer.line[cli->len] = '\0';
       mcucli_execute(cli);
       mcucli_reset(cli);
     }
 
-    cli->buffer.line[0] = c;
-    if (cli->buffer.line[0] != '\r') {
+    if (cli->prev_char != '\r') {
       cli->write(cli->prefix, strlen(cli->prefix));
     }
   } else if (c == 0x03) {
